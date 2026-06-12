@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
 def load_docs(path):
@@ -15,8 +15,9 @@ def chunk_docs(docs):
     return splitter.split_documents(docs)
 
 def embed_docs(chunks, db_path):
-    emb = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     Chroma.from_documents(documents=chunks, embedding=emb, persist_directory=db_path)
+    print(f"Successfully ingested {len(chunks)} chunks!")
 
 def main():
     docs_path = "data/docs"

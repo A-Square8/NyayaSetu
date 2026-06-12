@@ -1,9 +1,9 @@
 from langchain_chroma import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 def retrieval_node(state):
     q = state["rewritten_query"]
-    emb = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     db = Chroma(persist_directory="data/chroma", embedding_function=emb)
     
     docs = db.similarity_search(q, k=5)

@@ -169,7 +169,7 @@ Submit feedback on an answer.
 - **Chunk size: 1000 characters with 200 overlap**. Legal documents have long sections, so a 1000-char window captures enough context per chunk while keeping retrieval precise. The 200-char overlap prevents important sentences from being split across chunks.
 
 ### Embedding Model
-- **Google Generative AI Embeddings (embedding-001)**. Chosen for consistency with the Gemini LLM — same provider, no extra API keys. The embeddings are high-quality and optimized for retrieval tasks.
+- **Sentence-Transformers (all-MiniLM-L6-v2)**. Chosen to bypass Google's free-tier rate limits (100 RPM). It runs entirely locally, is free, and is perfectly lightweight for this size of corpus while providing excellent retrieval accuracy.
 
 ### LLM Choice
 - **Gemini 1.5 Flash**. Free tier, fast inference, strong structured output support. Used across all nodes (query analysis, grading, generation, hallucination check).
