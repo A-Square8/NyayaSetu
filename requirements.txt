@@ -13,3 +13,4 @@ pypdf
 python-dotenv
 pydantic
 tavily-python
+gradio

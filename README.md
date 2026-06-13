@@ -1,221 +1,160 @@
-# NyayaSetu — RAG-Powered Legal Assistant
+# FirstAidAI [SurakshaSetu]
 
-NyayaSetu ("bridge to justice") is a RAG-powered legal assistant that helps everyday Indians understand their rights under common laws. Instead of reading dense government PDFs, users ask plain questions like *"can my employer deduct salary without notice"* and get clear, cited answers grounded in official legal documents.
+**A production-ready, self-corrective RAG-powered First Aid AI Assistant and Gradio Dashboard.**
 
-Built with **LangGraph** for a self-corrective retrieval workflow, **ChromaDB** for vector storage, **Google Gemini** for LLM and embeddings, and served via **FastAPI**.
+Get clear, actionable, step-by-step first aid procedures grounded in official medical manuals, with fallback to real-time search and built-in hallucination checks.
+
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Gradio](https://img.shields.io/badge/Gradio-FFD21E?style=for-the-badge&logo=gradio&logoColor=black)
+![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-FF6F00?style=for-the-badge&logo=chroma&logoColor=white)
 
 ---
 
-## Architecture
+## What It Does
 
+FirstAidAI helps users handle medical emergencies by providing quick, easy-to-read, step-by-step instructions. The assistant pulls information directly from trusted local medical PDF documents, validates references to ensure safety, and falls back to Google/Tavily web search when local manuals do not cover the situation.
+
+### Key Capabilities
+
+| Capability | How It Works |
+|---|---|
+| **Step-by-Step Guidance** | Guides the user through clear, numbered first aid instructions using active verbs and highlighting safety warnings (e.g. *DO NOT apply ice*). |
+| **Self-Corrective RAG** | Evaluates document relevance and rewrites queries automatically if local manuals don't contain sufficient details. |
+| **Web Search Fallback** | Integrates Tavily search to fetch the latest guidelines if local PDF manuals are insufficient. |
+| **Gradio Dashboard** | Provides a web UI with input/output boxes on the left, and metadata (Category, Grounding status, Web Search state) on the right. |
+| **FastAPI Backend** | Exposes REST endpoints to integrate with mobile apps, Telegram bots, or other services. |
+
+---
+
+## System Architecture
+
+The core of FirstAidAI is built using **LangGraph**, routing queries dynamically based on document relevance and validation.
+
+```mermaid
+flowchart TD
+    User[User Query] --> QA[Query Analysis Node]
+    QA -->|Rewrite & Classify Category| Ret[Retrieval Node]
+    Ret -->|Fetch Top-5 Chunks| Grade[Grading Node]
+    
+    Grade -->|Evaluate Relevance| CheckDocs{Are Docs Sufficient?}
+    
+    CheckDocs -->|No & Retry < 2| Retry[Retry Count + 1]
+    Retry --> QA
+    
+    CheckDocs -->|No & Retry >= 2| Search[Web Search Node]
+    CheckDocs -->|Yes| Gen[Generation Node]
+    
+    Search --> Gen
+    Gen --> Hallucination[Hallucination Check Node]
+    
+    Hallucination -->|Grounded| END[Output Response]
+    Hallucination -->|Not Grounded & Retry < 2| Gen
+    Hallucination -->|Not Grounded & Retry >= 2| END
 ```
-User Question
-      │
-      ▼
-┌─────────────┐
-│   Query     │  Rewrites query for better retrieval,
-│  Analysis   │  classifies legal category
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│  Retrieval  │  Searches ChromaDB for top-5 relevant chunks
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│  Document   │  LLM grades each chunk as relevant/irrelevant
-│  Grading    │
-└──────┬──────┘
-       │
-       ├── sufficient docs? ──► YES ──► Generation ──► Hallucination Check ──► Answer
-       │
-       └── NO ──► retry_count < 2? ──► YES ──► Rewrite & Re-retrieve (loop)
-                                  └──► NO  ──► Web Search Fallback ──► Generation ──► Answer
-```
-
-The workflow is implemented as a **LangGraph StateGraph** with conditional edges for self-correction. If retrieved documents are graded as irrelevant, the system rewrites the query and retries (up to 2 times). After retries are exhausted, it falls back to web search via Tavily before generating the final answer.
-
-### Bonus Features
-- **Hallucination Check**: After generation, a verification node checks if the answer is grounded in the retrieved context. Hallucinated answers are regenerated with a stricter prompt.
-- **Web Search Fallback**: When the local corpus has no relevant results, Tavily web search provides additional context.
-- **Conversation Memory**: Session-based chat history supports follow-up questions.
 
 ---
 
-## Corpus
+## Technical Write-Up & Decisions
 
-The system ingests 9 official Indian legal documents covering:
-- Consumer Protection Act, 2019
-- Labour Codes (compilation of 4 codes)
-- Payment of Gratuity Act, 1972
-- Motor Vehicles Act, 1988
-- Right to Information Act, 2005
-- Rajasthan Rent Control Act, 2001
+### 1. Thought Process & Core Workflow
+We used a **self-corrective loop (CRAG)** to avoid sending irrelevant, noisy information to the generation layer. Medical queries require high accuracy. By grading each retrieved document segment before generation, we filter out irrelevant material. When local documentation does not satisfy the query, the agent rewrites the prompt and queries Tavily Search for standard medical guidelines.
 
-Documents are stored as PDFs in `data/docs/` and indexed into ChromaDB at `data/chroma/`.
+### 2. Chunking & Embedding Strategy
+- **Embedding Model:** `all-MiniLM-L6-v2` via HuggingFace (running locally) to bypass API costs/limits on high-volume document ingestion.
+- **Chunking:** `RecursiveCharacterTextSplitter` with `chunk_size=1000` and `chunk_overlap=200`. This ensures that instructions, which usually span multiple paragraphs, are kept together while preserving boundary context.
+
+### 3. Design Decisions & Tradeoffs
+- **Python-Calculated Metrics vs LLM Logic:** All routing parameters, retry limits, and document count stats are handled by deterministic Python logic rather than LLM reasoning, keeping the execution path fast and predictable.
+- **Web Search Fallback:** When local documents yield no relevant matches, the agent automatically triggers Tavily Web Search. This ensures that the user is never left without guidance in an emergency.
 
 ---
 
-## Setup
+## Setup & Installation
 
 ### Prerequisites
-- Python 3.10+
-- A Google Gemini API key ([get one here](https://aistudio.google.com/app/apikey))
-- A Tavily API key for web search fallback ([sign up here](https://tavily.com))
+- Python 3.12+
+- A Google Gemini API key (from [Google AI Studio](https://aistudio.google.com))
+- A Tavily API key (optional, for web search fallback)
 
-### Installation
+### Installation Steps
 
 ```bash
+# Clone the repository
 git clone https://github.com/A-Square8/NyayaSetu.git
 cd NyayaSetu
 
+# Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate
 
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### Environment Variables
-
-```bash
+# Create .env from the template
 cp .env.example .env
+# Edit .env and enter your actual GOOGLE_API_KEY and TAVILY_API_KEY
 ```
 
-Edit `.env` and add your API keys:
-```
-GOOGLE_API_KEY=your_gemini_api_key
-TAVILY_API_KEY=your_tavily_api_key
-```
+---
 
-### Ingest Documents
+## Running the Application
 
-Place your legal PDFs in `data/docs/` (or run the fetch script), then build the vector index:
-
+### 1. Embed Document Corpus
+Ensure you have your medical manuals (PDFs) inside `data/docs`. To clear any older documents and embed the new ones:
 ```bash
-python scripts/fetch_corpus.py
 python src/ingest.py
 ```
 
-### Run the Server
-
+### 2. Run the Gradio Dashboard
+Starts the white/orange web user interface:
 ```bash
-uvicorn app:api --reload
+python dashboard.py
 ```
+*Access the interface at `http://localhost:7860`.*
 
-The API will be available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
-
----
-
-## API Endpoints
-
-### POST /query
-Submit a legal question and get a cited answer.
-
-**Request:**
-```json
-{
-  "question": "Can my employer deduct salary without notice?",
-  "session_id": "optional-session-id-for-follow-ups"
-}
-```
-
-**Response:**
-```json
-{
-  "answer": "Under the Payment of Wages Act and the Labour Codes, an employer cannot make unauthorized deductions from wages without prior notice...",
-  "sources": ["data/docs/Labour Act.pdf", "data/docs/PaymentofGratuityAct.pdf"],
-  "category": "labour rights"
-}
-```
-
-### POST /ingest
-Upload new PDF documents to the corpus.
-
+### 3. Run the FastAPI Server
+Starts the backend endpoints:
 ```bash
-curl -X POST http://localhost:8000/ingest \
-  -F "files=@new_document.pdf"
+python -m uvicorn app:api --reload --port 8000
 ```
 
-### GET /documents
-List all documents currently in the corpus.
-
-**Response:**
-```json
-[
-  {"filename": "CPA2019.pdf", "size_bytes": 1236998},
-  {"filename": "Labour Act.pdf", "size_bytes": 1476614}
-]
+### 4. Run Verification Suite
+Runs offline verification or query test files:
+```bash
+python test.py
+python test_api.py
 ```
 
-### POST /feedback
-Submit feedback on an answer.
+---
 
-**Request:**
+## Example API Requests & Responses
+
+### Query Endpoint (`POST /query`)
+
+#### Request
 ```json
 {
-  "question": "Can my employer deduct salary without notice?",
-  "answer": "Under the Payment of Wages Act...",
-  "rating": "up",
-  "comment": "Very helpful and accurate"
+  "question": "What are the first aid steps for a second-degree burn?",
+  "session_id": "test_session_01"
+}
+```
+
+#### Response
+```json
+{
+  "answer": "1. **Cool the Burn**: Run cool, clean water over the area for at least 10 minutes.\n2. **Protect the Blisters**: Do not break any blisters as it increases infection risk.\n3. **Cover Loosely**: Apply a sterile, non-adherent bandage.\n\n*Source: FirstAidManual.pdf*",
+  "sources": ["FirstAidManual.pdf"],
+  "category": "burns",
+  "session_id": "test_session_01",
+  "web_search_used": false
 }
 ```
 
 ---
 
-## Design Decisions & Tradeoffs
-
-### Chunking Strategy
-- **Chunk size: 1000 characters with 200 overlap**. Legal documents have long sections, so a 1000-char window captures enough context per chunk while keeping retrieval precise. The 200-char overlap prevents important sentences from being split across chunks.
-
-### Embedding Model
-- **Sentence-Transformers (all-MiniLM-L6-v2)**. Chosen to bypass Google's free-tier rate limits (100 RPM). It runs entirely locally, is free, and is perfectly lightweight for this size of corpus while providing excellent retrieval accuracy.
-
-### LLM Choice
-- **Gemini 1.5 Flash**. Free tier, fast inference, strong structured output support. Used across all nodes (query analysis, grading, generation, hallucination check).
-
-### Self-Corrective Retrieval
-- The grading + retry loop (max 2 retries) is the core self-corrective mechanism. If the initial retrieval misses, the query gets rewritten and re-tried. This handles ambiguous or colloquial queries that don't match legal terminology on the first attempt.
-
-### Hallucination Check
-- A separate verification node (inspired by Self-RAG) checks that the generated answer is actually grounded in the retrieved documents. This is critical for legal Q&A where accuracy matters.
-
-### Web Search Fallback
-- Tavily web search kicks in only after local retries are exhausted. This ensures the system can still answer questions outside the corpus without polluting answers that the local docs can handle.
-
----
-
-## What I Would Improve With More Time
-- Add a Streamlit/Gradio frontend for interactive Q&A
-- Implement hybrid search (keyword + semantic) for better retrieval on legal terminology
-- Add document-level metadata (act name, section numbers) for more precise citations
-- Support Hindi language queries with multilingual embeddings
-- Add evaluation metrics (retrieval precision, answer faithfulness scores)
-- Deploy with Docker for easier setup
-
----
-
-## Project Structure
-
-```
-├── app.py                    # FastAPI application
-├── requirements.txt          # Python dependencies
-├── .env.example              # Environment variable template
-├── scripts/
-│   └── fetch_corpus.py       # Downloads legal PDFs
-├── src/
-│   ├── graph.py              # LangGraph workflow definition
-│   ├── ingest.py             # Document ingestion pipeline
-│   ├── state.py              # Graph state schema
-│   └── nodes/
-│       ├── query_analysis.py # Query rewriting + classification
-│       ├── retrieval.py      # Vector store search
-│       ├── grading.py        # Document relevance grading
-│       ├── generation.py     # Answer generation with citations
-│       ├── hallucination.py  # Answer groundedness check
-│       └── web_search.py     # Tavily web search fallback
-├── data/
-│   ├── docs/                 # PDF corpus (not tracked in git)
-│   └── chroma/               # ChromaDB index (not tracked in git)
-└── test.py                   # End-to-end test script
-```
+## Future Roadmap & Improvements
+- **Voice Activation:** Integrate speech-to-text (Whisper) for hands-free usage during emergencies.
+- **Emergency Action Triggers:** Add a button to instantly locate the nearest hospital/clinic using browser geo-location.

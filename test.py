@@ -5,7 +5,7 @@ from src.nodes.query_analysis import query_analysis_node
 from src.nodes.retrieval import retrieval_node
 
 def test_pipeline():
-    state = {"question": "can my employer deduct salary without notice"}
+    state = {"question": "how to treat a second-degree burn"}
 
     print(f"Original Question: {state['question']}")
     
@@ -14,7 +14,7 @@ def test_pipeline():
     qa_result = query_analysis_node(state)
     state.update(qa_result)
     print(f"Rewritten Query: {qa_result['rewritten_query']}")
-    print(f"Legal Category: {qa_result['category']}")
+    print(f"First Aid Category: {qa_result['category']}")
 
     # Test Retrieval Node
     print("\n--- Running Retrieval Node ---")

@@ -15,7 +15,7 @@ def hallucination_check_node(state):
         return {"hallucination_score": 0.0}
 
     ctx = "\n\n".join([d.page_content for d in docs])
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+    llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite")
     structured_llm = llm.with_structured_output(HallucinationOutput)
 
     prompt = (

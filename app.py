@@ -12,7 +12,7 @@ from typing import Optional, List
 from src.graph import build_graph
 from src.ingest import load_docs, chunk_docs, embed_docs
 
-api = FastAPI(title="NyayaSetu", description="RAG-powered legal assistant for Indian law")
+api = FastAPI(title="FirstAidAI", description="RAG-powered first aid medical assistant")
 graph = build_graph()
 
 DOCS_DIR = "data/docs"

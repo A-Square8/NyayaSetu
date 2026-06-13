@@ -19,10 +19,16 @@ def embed_docs(chunks, db_path):
     Chroma.from_documents(documents=chunks, embedding=emb, persist_directory=db_path)
     print(f"Successfully ingested {len(chunks)} chunks!")
 
+import shutil
+
 def main():
     docs_path = "data/docs"
     db_path = "data/chroma"
     
+    if os.path.exists(db_path):
+        print(f"Clearing existing database at {db_path}...")
+        shutil.rmtree(db_path)
+        
     docs = load_docs(docs_path)
     chunks = chunk_docs(docs)
     embed_docs(chunks, db_path)

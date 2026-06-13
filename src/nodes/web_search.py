@@ -1,6 +1,6 @@
 import os
 from tavily import TavilyClient
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 
 def web_search_node(state):
@@ -11,7 +11,7 @@ def web_search_node(state):
         return {"retrieved_docs": [], "web_search_used": True}
 
     client = TavilyClient(api_key=api_key)
-    results = client.search(query=f"Indian law: {q}", max_results=5)
+    results = client.search(query=f"first aid medical treatment guidelines: {q}", max_results=5)
 
     docs = []
     for r in results.get("results", []):
