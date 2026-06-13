@@ -13,6 +13,10 @@ Get clear, actionable, step-by-step first aid procedures grounded in official me
 
 ---
 
+<img width="1538" height="803" alt="image" src="https://github.com/user-attachments/assets/44583104-c49c-4102-8465-f454115a5584" />
+
+
+
 ## What It Does
 
 FirstAidAI helps users handle medical emergencies by providing quick, easy-to-read, step-by-step instructions. The assistant pulls information directly from trusted local medical PDF documents, validates references to ensure safety, and falls back to Google/Tavily web search when local manuals do not cover the situation.
